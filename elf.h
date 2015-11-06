@@ -113,4 +113,34 @@ typedef struct
 #define	SHF_EXECINSTR	0x4
 #define	SHF_MASKPROC	0xf0000000
 
+typedef struct
+{
+	Elf32_Word		st_name;
+	Elf32_Addr		st_value;
+	Elf32_Word		st_size;
+	unsigned char	st_info;
+	unsigned char	st_other;
+	Elf32_Half		st_shndx;
+} Elf32_Sym;
+
+#define	STN_UNDEF		0
+
+#define	ELF32_ST_BIND(i)	((i) >> 4)
+#define	ELF32_ST_TYPE(i)	((i) & 0x0f)
+#define	ELF32_ST_INFO(b, t)	(((b) << 4) + ((t) & 0x0f))
+
+#define	STB_LOCAL		0
+#define	STB_GLOBAL		1
+#define	STB_WEAK		2
+#define	STB_LOPROC		13
+#define	STB_HIPROC		15
+
+#define	STT_NOTYPE		0
+#define	STT_OBJECT		1
+#define	STT_FUNC		2
+#define	STT_SECTION		3
+#define	STT_FILE		4
+#define	STT_LOPROC		13
+#define	STT_HIPROC		15
+
 #endif

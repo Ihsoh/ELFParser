@@ -212,47 +212,165 @@ static const char * _parse_shdr_type(Elf32_Word type)
 	}
 }
 
+static const char * _parse_symbol_type(unsigned char info)
+{
+	switch(ELF32_ST_TYPE(info))
+	{
+		case STT_NOTYPE:
+			return "NOTYPE";
+		case STT_OBJECT:
+			return "OBJECT";
+		case STT_FUNC:
+			return "FUNC";
+		case STT_SECTION:
+			return "SECTION";
+		case STT_FILE:
+			return "FILE";
+		case STT_LOPROC:
+			return "LOPROC";
+		case STT_HIPROC:
+			return "HIPROC";
+		default:
+			return "Unknow";
+	}
+}
+
+static const char * _parse_symbol_bind(unsigned char info)
+{
+	switch(ELF32_ST_BIND(info))
+	{
+		case STB_LOCAL:
+			return "LOCAL";
+		case STB_GLOBAL:
+			return "GLOBAL";
+		case STB_WEAK:
+			return "WEAK";
+		case STB_LOPROC:
+			return "LOPROC";
+		case STB_HIPROC:
+			return "HIPROC";
+		default:
+			return "Unknow";
+	}
+}
+
 static void _parse_sht(void)
 {
 	printf("####Elf Section Header Table####\n");
 	Elf32_Shdr * shdr = (Elf32_Shdr *)(_file_content + _header->e_shoff);
+	unsigned int w = 0;
+	Elf32_Shdr * strtab = NULL;
+	Elf32_Shdr * dynstr = NULL;
+	// Print all Section Header Table infomation.
+	printf("SectionHeaderTable:\n");
+	Elf32_Shdr * itr_shdr = NULL;
 	Elf32_Shdr * shstr_shdr = shdr + _header->e_shstrndx;
 	const char * shstr_shdr_offset = _file_content + shstr_shdr->sh_offset;
-	unsigned int w = printf("%8s | %24s | %8s | %10s | %10s | %10s | %2s | %10s | %2s | %3s | %2s\n",
-							"Index",
-							"Name",
-							"Type",
-							"Addr",
-							"Offset",
-							"Size",
-							"ES",
-							"Flags",
-							"Lk",
-							"Inf",
-							"Al") - 1;
+	w = printf(	"%8s | %24s | %8s | %10s | %10s | %10s | %2s | %10s | %2s | %3s | %2s\n",
+				"Index",
+				"Name",
+				"Type",
+				"Addr",
+				"Offset",
+				"Size",
+				"ES",
+				"Flags",
+				"Lk",
+				"Inf",
+				"Al") - 1;
 	for(unsigned int ui = 0; ui < w; ui++)
 		printf("=");
 	printf("\n");
-	for(int index = 0; index < _header->e_shnum; index++)
+	itr_shdr = shdr;
+	for(int index = 0;
+		index < _header->e_shnum;
+		index++, itr_shdr++)
 	{
 		const char * name = "";
-		if((shstr_shdr_offset + shdr->sh_name)[0] != '\0')
-			name = shstr_shdr_offset + shdr->sh_name;
-		const char * type_name = _parse_shdr_type(shdr->sh_type);
+		if((shstr_shdr_offset + itr_shdr->sh_name)[0] != '\0')
+			name = shstr_shdr_offset + itr_shdr->sh_name;
+		if(strcmp(name, ".strtab") == 0)
+			strtab = itr_shdr;
+		else if(strcmp(name, ".dynstr") == 0)
+			dynstr = itr_shdr;
+		const char * type_name = _parse_shdr_type(itr_shdr->sh_type);
 		printf(	"%8d | %24s | %8s | 0x%.8x | 0x%.8x | %10u | %2u | 0x%.8x | %2u | %3u | %2u\n",
 				index,
 				name,
 				type_name,
-				shdr->sh_addr,
-				shdr->sh_offset,
-				shdr->sh_size,
-				shdr->sh_entsize,
-				shdr->sh_flags,
-				shdr->sh_link,
-				shdr->sh_info,
-				shdr->sh_addralign);
-		shdr++;
+				itr_shdr->sh_addr,
+				itr_shdr->sh_offset,
+				itr_shdr->sh_size,
+				itr_shdr->sh_entsize,
+				itr_shdr->sh_flags,
+				itr_shdr->sh_link,
+				itr_shdr->sh_info,
+				itr_shdr->sh_addralign);
 	}
+	printf("\n");
+	// Print all Symbol Table infomation.
+	itr_shdr = shdr;
+	const char * strtab_offset = NULL;
+	if(strtab != NULL)
+		strtab_offset = _file_content + strtab->sh_offset;
+	const char * dynstr_offset = NULL;
+	if(dynstr != NULL)
+		dynstr_offset = _file_content + dynstr->sh_offset;
+	for(int index = 0;
+		index < _header->e_shnum;
+		index++, itr_shdr++)
+		if(	itr_shdr->sh_type == SHT_SYMTAB
+			|| itr_shdr->sh_type == SHT_DYNSYM)
+		{
+			const char * name = "";
+			if((shstr_shdr_offset + itr_shdr->sh_name)[0] != '\0')
+				name = shstr_shdr_offset + itr_shdr->sh_name;
+			printf("SectionHeaderTable(%s):\n", name);
+			w = printf(	"%8s | %10s | %10s | %10s | %10s | %6s |%s\n",
+						"Index",
+						"Value",
+						"Size",
+						"Type",
+						"Bind",
+						"Ndx",
+						"Name") - 1;
+			for(unsigned int ui = 0; ui < w; ui++)
+				printf("=");
+			printf("\n");
+			Elf32_Sym * sym = (Elf32_Sym *)(_file_content + itr_shdr->sh_offset);
+			for(int symidx = 0;
+				symidx < itr_shdr->sh_size / itr_shdr->sh_entsize;
+				symidx++, sym++)
+			{
+				const char * sym_name = "";
+				if(itr_shdr->sh_type == SHT_SYMTAB)
+				{
+					if(	strtab_offset != NULL
+						&& (strtab_offset + sym->st_name)[0] != '\0')
+						sym_name = strtab_offset + sym->st_name;
+				}
+				else if(itr_shdr->sh_type == SHT_DYNSYM)
+				{
+					if(	dynstr_offset != NULL
+						&& (dynstr_offset + sym->st_name)[0] != '\0')
+						sym_name = dynstr_offset + sym->st_name;
+				}
+
+				const char * sym_type_name = _parse_symbol_type(sym->st_info);
+				const char * sym_bind_name = _parse_symbol_bind(sym->st_info);
+				printf(	"%8u | 0x%.8x | %10u | %10s | %10s | %6u | %s\n",
+						symidx,
+						sym->st_value,
+						sym->st_size,
+						sym_type_name,
+						sym_bind_name,
+						sym->st_shndx,
+						sym_name);
+			}
+			printf("\n");
+		}
+
+
 	printf("\n");
 }
 
