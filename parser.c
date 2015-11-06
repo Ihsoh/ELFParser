@@ -199,14 +199,6 @@ static const char * _parse_shdr_type(Elf32_Word type)
 			return "SHLIB";
 		case SHT_DYNSYM:
 			return "DYNSYM";
-		case SHT_LOPROC:
-			return "LOPROC";
-		case SHT_HIPROC:
-			return "HIPROC";
-		case SHT_LOUSER:
-			return "LOUSER";
-		case SHT_HIUSER:
-			return "HIUSER";
 		default:
 			return "Unknow";
 	}
@@ -226,10 +218,6 @@ static const char * _parse_symbol_type(unsigned char info)
 			return "SECTION";
 		case STT_FILE:
 			return "FILE";
-		case STT_LOPROC:
-			return "LOPROC";
-		case STT_HIPROC:
-			return "HIPROC";
 		default:
 			return "Unknow";
 	}
@@ -245,10 +233,6 @@ static const char * _parse_symbol_bind(unsigned char info)
 			return "GLOBAL";
 		case STB_WEAK:
 			return "WEAK";
-		case STB_LOPROC:
-			return "LOPROC";
-		case STB_HIPROC:
-			return "HIPROC";
 		default:
 			return "Unknow";
 	}
@@ -374,6 +358,76 @@ static void _parse_sht(void)
 	printf("\n");
 }
 
+static const char * _parse_phdr_type(Elf32_Word type)
+{
+	switch(type)
+	{
+		case PT_NULL:
+			return "NULL";
+		case PT_LOAD:
+			return "LOAD";
+		case PT_DYNAMIC:
+			return "DYNAMIC";
+		case PT_INTERP:
+			return "INTERP";
+		case PT_NOTE:
+			return "NOTE";
+		case PT_SHLIB:
+			return "SHLIB";
+		case PT_PHDR:
+			return "PHDR";
+		default:
+			return "Unknow";
+	}
+}
+
+static void _parse_pht(void)
+{
+	printf("####Elf Program Header Table####\n");
+	Elf32_Phdr * phdr = (Elf32_Phdr *)(_file_content + _header->e_phoff);
+	unsigned int w = 0;
+	// Print all Program Header Table infomation.
+	printf("ProgramHeaderTable:\n");
+	Elf32_Phdr * itr_phdr = NULL;
+	w = printf(	"%8s | %24s | %10s | %10s | %10s | %10s | %10s | %3s | %10s\n",
+				"Index",
+				"Type",
+				"Offset",
+				"VirtAddr",
+				"PhysAddr",
+				"FileSize",
+				"MemSize",
+				"Flg",
+				"Align") - 1;
+	for(unsigned int ui = 0; ui < w; ui++)
+		printf("=");
+	printf("\n");
+	itr_phdr = phdr;
+	for(int index = 0;
+		index < _header->e_phnum;
+		index++, itr_phdr++)
+	{
+		const char * phdr_type_name = _parse_phdr_type(itr_phdr->p_type);
+		char flags[4] = {' ', ' ', ' ', '\0'};
+		if(itr_phdr->p_flags & PF_R)
+			flags[0] = 'R';
+		if(itr_phdr->p_flags & PF_W)
+			flags[1] = 'W';
+		if(itr_phdr->p_flags & PF_X)
+			flags[2] = 'E';
+		printf(	"%8u | %24s | 0x%.8x | 0x%.8x | 0x%.8x | 0x%.8x | 0x%.8x | %s | 0x%.8x\n",
+				index,
+				phdr_type_name,
+				itr_phdr->p_offset,
+				itr_phdr->p_vaddr,
+				itr_phdr->p_paddr,
+				itr_phdr->p_filesz,
+				itr_phdr->p_memsz,
+				flags,
+				itr_phdr->p_align);
+	}
+}
+
 static void _end(void)
 {
 }
@@ -383,6 +437,7 @@ static void _parse(void)
 	_start();
 	_parse_header();
 	_parse_sht();
+	_parse_pht();
 	_end();
 }
 

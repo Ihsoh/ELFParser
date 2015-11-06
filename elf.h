@@ -3,6 +3,10 @@
 
 #include "types.h"
 
+//
+//	ELF Header
+//
+
 #define	EI_MAG0			0
 #define	EI_MAG1			1
 #define	EI_MAG2			2
@@ -77,6 +81,10 @@ typedef struct
 #define	EV_NONE		0
 #define	EV_CURRENT	1
 
+//
+//	Section Header Table
+//
+
 typedef struct
 {
 	Elf32_Word		sh_name;
@@ -142,5 +150,36 @@ typedef struct
 #define	STT_FILE		4
 #define	STT_LOPROC		13
 #define	STT_HIPROC		15
+
+//
+//	Program Header Table
+//
+
+typedef struct
+{
+	Elf32_Word		p_type;
+	Elf32_Off		p_offset;
+	Elf32_Addr		p_vaddr;
+	Elf32_Addr		p_paddr;
+	Elf32_Word		p_filesz;
+	Elf32_Word		p_memsz;
+	Elf32_Word		p_flags;
+	Elf32_Word		p_align;
+}  Elf32_Phdr;
+
+#define	PT_NULL		0
+#define	PT_LOAD		1
+#define	PT_DYNAMIC	2
+#define	PT_INTERP	3
+#define	PT_NOTE		4
+#define	PT_SHLIB	5
+#define	PT_PHDR		6
+#define	PT_LOPROC	0x70000000
+#define	PT_HIPROC	0x7fffffff
+
+#define	PF_X		0x1
+#define	PF_W		0x2
+#define	PF_R		0x4
+#define	PF_MASKPROC	0xf0000000
 
 #endif
