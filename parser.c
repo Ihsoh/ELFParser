@@ -238,6 +238,37 @@ static const char * _parse_symbol_bind(unsigned char info)
 	}
 }
 
+static const char * _parse_relocation_type(Elf32_Word info)
+{
+	switch(ELF32_R_TYPE(info))
+	{
+		case R_386_NONE:
+			return "R_386_NONE";
+		case R_386_32:
+			return "R_386_32";
+		case R_386_PC32:
+			return "R_386_PC32";
+		case R_386_GOT32:
+			return "R_386_GOT32";
+		case R_386_PLT32:
+			return "R_386_PLT32";
+		case R_386_COPY:
+			return "R_386_COPY";
+		case R_386_GLOB_DAT:
+			return "R_386_GLOB_DAT";
+		case R_386_JMP_SLOT:
+			return "R_386_JMP_SLOT";
+		case R_386_RELATIVE:
+			return "R_386_RELATIVE";
+		case R_386_GOTOFF:
+			return "R_386_GOTOFF";
+		case R_386_GOTPC:
+			return "R_386_GOTPC";
+		default:
+			return "Unknow";
+	}
+}
+
 static void _parse_sht(void)
 {
 	printf("####Elf Section Header Table####\n");
@@ -245,6 +276,7 @@ static void _parse_sht(void)
 	unsigned int w = 0;
 	Elf32_Shdr * strtab = NULL;
 	Elf32_Shdr * dynstr = NULL;
+	Elf32_Shdr * dynsym = NULL;
 	// Print all Section Header Table infomation.
 	printf("SectionHeaderTable:\n");
 	Elf32_Shdr * itr_shdr = NULL;
@@ -277,6 +309,8 @@ static void _parse_sht(void)
 			strtab = itr_shdr;
 		else if(strcmp(name, ".dynstr") == 0)
 			dynstr = itr_shdr;
+		else if(strcmp(name, ".dynsym") == 0)
+			dynsym = itr_shdr;
 		const char * type_name = _parse_shdr_type(itr_shdr->sh_type);
 		printf(	"%8d | %24s | %8s | 0x%.8x | 0x%.8x | %10u | %2u | 0x%.8x | %2u | %3u | %2u\n",
 				index,
@@ -353,7 +387,49 @@ static void _parse_sht(void)
 			}
 			printf("\n");
 		}
-
+	// Print all Relocation Table infomation.
+	itr_shdr = shdr;
+	for(int index = 0;
+		index < _header->e_shnum;
+		index++, itr_shdr++)
+		if(itr_shdr->sh_type == SHT_REL)
+		{
+			const char * name = "";
+			if((shstr_shdr_offset + itr_shdr->sh_name)[0] != '\0')
+				name = shstr_shdr_offset + itr_shdr->sh_name;
+			printf("SectionHeaderTable(%s):\n", name);
+			w = printf(	"%8s | %10s | %10s | %20s | %10s | %s\n",
+						"Index",
+						"Offset",
+						"Info",
+						"Type",
+						"Value",
+						"Name") - 1;
+			for(unsigned int ui = 0; ui < w; ui++)
+				printf("=");
+			printf("\n");
+			Elf32_Rel * rel = (Elf32_Rel *)(_file_content + itr_shdr->sh_offset);
+			for(int relidx = 0;
+				relidx < itr_shdr->sh_size / itr_shdr->sh_entsize;
+				relidx++, rel++)
+			{
+				unsigned int sym_index = ELF32_R_SYM(rel->r_info);
+				Elf32_Sym * sym = (Elf32_Sym *)(_file_content + dynsym->sh_offset) + sym_index;
+				const char * rel_sym_name = "";
+				if(	dynstr_offset != NULL
+					&& (dynstr_offset + sym->st_name)[0] != '\0')
+					rel_sym_name = dynstr_offset + sym->st_name;
+				const char * rel_type_name = _parse_relocation_type(rel->r_info);
+				printf(	"%8u | 0x%.8x | 0x%.8x | %20s | 0x%.8x | %s\n",
+						relidx,
+						rel->r_offset,
+						rel->r_info,
+						rel_type_name,
+						sym->st_value,
+						rel_sym_name);
+			}
+			printf("\n");
+		}
 
 	printf("\n");
 }
